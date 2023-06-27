@@ -22,6 +22,8 @@ import org.apache.seatunnel.api.table.type.DecimalType;
 import org.apache.seatunnel.api.table.type.LocalTimeType;
 import org.apache.seatunnel.api.table.type.PrimitiveByteArrayType;
 import org.apache.seatunnel.api.table.type.SeaTunnelDataType;
+import org.apache.seatunnel.common.exception.CommonErrorCode;
+import org.apache.seatunnel.connectors.seatunnel.jdbc.exception.JdbcConnectorException;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.JdbcDialect;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.JdbcDialectTypeMapper;
 
@@ -43,19 +45,30 @@ public class OceanBaseTypeMapper implements JdbcDialectTypeMapper {
     // ============================data types=====================
     private static final String OCEANBASE_UNKNOWN = "UNKNOWN";
     private static final String OCEANBASE_BIT = "BIT";
-
-    // -------------------------number----------------------------
-    private static final String OCEANBASE_BIGINT = "BIGINT";
-    private static final String OCEANBASE_INT = "INT";
-    private static final String OCEANBASE_INTEGER = "INTEGER";
-    private static final String OCEANBASE_SMALLINT = "SMALLINT";
     private static final String OCEANBASE_BOOL = "BOOL";
     private static final String OCEANBASE_BOOLEAN = "BOOLEAN";
+
+    // -------------------------number----------------------------
     private static final String OCEANBASE_TINYINT = "TINYINT";
+    private static final String OCEANBASE_TINYINT_UNSIGNED = "TINYINT UNSIGNED";
+    private static final String OCEANBASE_SMALLINT = "SMALLINT";
+    private static final String OCEANBASE_SMALLINT_UNSIGNED = "SMALLINT UNSIGNED";
+    private static final String OCEANBASE_MEDIUMINT = "MEDIUMINT";
+    private static final String OCEANBASE_MEDIUMINT_UNSIGNED = "MEDIUMINT UNSIGNED";
+    private static final String OCEANBASE_INT = "INT";
+    private static final String OCEANBASE_INT_UNSIGNED = "INT UNSIGNED";
+    private static final String OCEANBASE_INTEGER = "INTEGER";
+    private static final String OCEANBASE_INTEGER_UNSIGNED = "INTEGER UNSIGNED";
+    private static final String OCEANBASE_BIGINT = "BIGINT";
+    private static final String OCEANBASE_BIGINT_UNSIGNED = "BIGINT UNSIGNED";
     private static final String OCEANBASE_DECIMAL = "DECIMAL";
+    private static final String OCEANBASE_DECIMAL_UNSIGNED = "DECIMAL UNSIGNED";
     private static final String OCEANBASE_FLOAT = "FLOAT";
+    private static final String OCEANBASE_FLOAT_UNSIGNED = "FLOAT UNSIGNED";
     private static final String OCEANBASE_DOUBLE = "DOUBLE";
+    private static final String OCEANBASE_DOUBLE_UNSIGNED = "DOUBLE UNSIGNED";
     private static final String OCEANBASE_NUMBER = "NUMBER";
+    private static final String OCEANBASE_NUMBER_UNSIGNED = "NUMBER UNSIGNED";
 
     // ------------------------------time-------------------------
     private static final String OCEANBASE_DATE = "DATE";
@@ -91,35 +104,50 @@ public class OceanBaseTypeMapper implements JdbcDialectTypeMapper {
         int scale = metadata.getScale(colIndex);
         switch (oceanBaseType) {
             case OCEANBASE_BIT:
+                if (precision == 1) {
+                    return BasicType.BOOLEAN_TYPE;
+                } else {
+                    return PrimitiveByteArrayType.INSTANCE;
+                }
+            case OCEANBASE_BOOL:
+            case OCEANBASE_BOOLEAN:
                 return BasicType.BOOLEAN_TYPE;
-
+            case OCEANBASE_TINYINT:
+            case OCEANBASE_TINYINT_UNSIGNED:
+            case OCEANBASE_SMALLINT:
+            case OCEANBASE_SMALLINT_UNSIGNED:
+            case OCEANBASE_MEDIUMINT:
+            case OCEANBASE_MEDIUMINT_UNSIGNED:
             case OCEANBASE_INT:
             case OCEANBASE_INTEGER:
             case OCEANBASE_YEAR:
                 return BasicType.INT_TYPE;
-
-            case OCEANBASE_SMALLINT:
-                return BasicType.SHORT_TYPE;
+            case OCEANBASE_INT_UNSIGNED:
+            case OCEANBASE_INTEGER_UNSIGNED:
             case OCEANBASE_BIGINT:
                 return BasicType.LONG_TYPE;
-
-            case OCEANBASE_BOOL:
-            case OCEANBASE_BOOLEAN:
-            case OCEANBASE_TINYINT:
-                return BasicType.BYTE_TYPE;
-
+            case OCEANBASE_BIGINT_UNSIGNED:
+                return new DecimalType(20, 0);
             case OCEANBASE_DECIMAL:
                 if (precision > PRECISION_MAX) {
                     LOG.warn("{} will probably cause value overflow.", OCEANBASE_DECIMAL);
                     return new DecimalType(PRECISION_MAX, SCALE_MAX);
                 }
                 return new DecimalType(precision, scale);
-
+            case OCEANBASE_DECIMAL_UNSIGNED:
+                return new DecimalType(precision + 1, scale);
             case OCEANBASE_FLOAT:
+                return BasicType.FLOAT_TYPE;
+            case OCEANBASE_FLOAT_UNSIGNED:
+                LOG.warn("{} will probably cause value overflow.", OCEANBASE_FLOAT_UNSIGNED);
                 return BasicType.FLOAT_TYPE;
             case OCEANBASE_DOUBLE:
                 return BasicType.DOUBLE_TYPE;
+            case OCEANBASE_DOUBLE_UNSIGNED:
+                LOG.warn("{} will probably cause value overflow.", OCEANBASE_DOUBLE_UNSIGNED);
+                return BasicType.DOUBLE_TYPE;
             case OCEANBASE_NUMBER:
+            case OCEANBASE_NUMBER_UNSIGNED:
                 if (scale == 0 && precision == 0) {
                     return BasicType.DOUBLE_TYPE;
                 }
@@ -141,13 +169,11 @@ public class OceanBaseTypeMapper implements JdbcDialectTypeMapper {
             case OCEANBASE_TIMESTAMP:
                 return LocalTimeType.LOCAL_DATE_TIME_TYPE;
 
-            case OCEANBASE_VARCHAR:
-            case OCEANBASE_VARBINARY:
             case OCEANBASE_CHAR:
-            case OCEANBASE_BINARY:
+            case OCEANBASE_VARCHAR:
             case OCEANBASE_TINYTEXT:
-            case OCEANBASE_TEXT:
             case OCEANBASE_MEDIUMTEXT:
+            case OCEANBASE_TEXT:
             case OCEANBASE_ENUM:
             case OCEANBASE_SET:
             case OCEANBASE_JSON:
@@ -161,15 +187,18 @@ public class OceanBaseTypeMapper implements JdbcDialectTypeMapper {
                 return BasicType.STRING_TYPE;
 
             case OCEANBASE_TINYBLOB:
-            case OCEANBASE_BLOB:
             case OCEANBASE_MEDIUMBLOB:
+            case OCEANBASE_BLOB:
             case OCEANBASE_LONGBLOB:
+            case OCEANBASE_VARBINARY:
+            case OCEANBASE_BINARY:
                 return PrimitiveByteArrayType.INSTANCE;
 
             case OCEANBASE_UNKNOWN:
             default:
                 final String jdbcColumnName = metadata.getColumnName(colIndex);
-                throw new UnsupportedOperationException(
+                throw new JdbcConnectorException(
+                        CommonErrorCode.UNSUPPORTED_OPERATION,
                         String.format(
                                 "Doesn't support OceanBase type '%s' on column '%s' yet.",
                                 oceanBaseType, jdbcColumnName));
