@@ -26,7 +26,7 @@ import com.google.auto.service.AutoService;
 public class OceanBaseDialectFactory implements JdbcDialectFactory {
     @Override
     public boolean acceptsURL(String url) {
-        return url.startsWith("jdbc:mysql:");
+        return url.startsWith("jdbc:oceanbase:");
     }
 
     @Override

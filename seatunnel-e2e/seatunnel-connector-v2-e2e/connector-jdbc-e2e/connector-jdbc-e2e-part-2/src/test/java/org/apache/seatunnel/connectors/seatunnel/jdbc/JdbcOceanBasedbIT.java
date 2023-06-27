@@ -35,14 +35,14 @@ import java.util.Map;
 
 public class JdbcOceanBasedbIT extends AbstractJdbcIT {
 
-    private static final String OCEANBASE_IMAGE = "oceanbase/oceanbase-ce";
+    private static final String OCEANBASE_IMAGE = "oceanbase/oceanbase-ce:4.0.0.0";
 
     private static final String OCEANBASE_CONTAINER_HOST = "e2e_oceanbaseDb";
-    private static final String DRIVER_CLASS = "com.mysql.cj.jdbc.Driver";
+    private static final String DRIVER_CLASS = "com.oceanbase.jdbc.Driver";
     private static final int PORT = 2881;
     private static final String DATABASE = "seatunnel";
     private static final String URL =
-            "jdbc:mysql://"
+            "jdbc:oceanbase://"
                     + HOST
                     + ":"
                     + PORT
@@ -54,7 +54,7 @@ public class JdbcOceanBasedbIT extends AbstractJdbcIT {
     private static final String SOURCE_TABLE = "e2e_ob_source";
     private static final String SINK_TABLE = "e2e_ob_sink";
     private static final String DRIVER_JAR =
-            "https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.16/mysql-connector-java-8.0.16.jar";
+            "https://repo1.maven.org/maven2/com/oceanbase/oceanbase-client/2.4.3/oceanbase-client-2.4.3.jar";
     private static final List<String> CONFIG_FILE =
             Lists.newArrayList("/jdbc_oceanbase_source_and_sink.conf");
 

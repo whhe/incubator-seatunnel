@@ -31,12 +31,12 @@ public class OceanBaseDialect implements JdbcDialect {
 
     @Override
     public JdbcRowConverter getRowConverter() {
-        return null;
+        return new OceanBaseJdbcRowConverter();
     }
 
     @Override
     public JdbcDialectTypeMapper getJdbcDialectTypeMapper() {
-        return null;
+        return new OceanBaseTypeMapper();
     }
 
     @Override
